@@ -82,9 +82,9 @@
     ]
   },
   "images": {
-    "scene1": "pexels:4989186",
-    "scene2": "pexels:6129444",
-    "cta": "pexels:7789620"
+    "scene1": "pexels:5723883",
+    "scene2": "pexels:4226219",
+    "cta": "pexels:7089020"
   },
   "sameAs": [],
   "tracking": {
@@ -152,9 +152,10 @@
       ],
       "insurance": [],
       "photos": [
-        "pexels:33812025",
-        "pexels:19921278",
-        "pexels:7789620"
+        "pexels:4226264",
+        "pexels:7088479",
+        "pexels:4226139",
+        "pexels:7089630"
       ]
     }
   ],
@@ -439,5 +440,11 @@
       "ينفع ألغي أو أغيّر الميعاد؟",
       "أيوه، بالرد على رسالة التأكيد على الواتساب."
     ]
-  ]
+  ],
+  "style": "neuro",
+  "fonts": {
+    "query": "family=Readex+Pro:wght@300;400;500;600;700",
+    "body": "\"Readex Pro\",system-ui,sans-serif",
+    "head": "\"Readex Pro\",system-ui,sans-serif"
+  }
 }

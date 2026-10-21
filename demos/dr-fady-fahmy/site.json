@@ -83,9 +83,9 @@
     ]
   },
   "images": {
-    "scene1": "pexels:5473182",
-    "scene2": "pexels:6129444",
-    "cta": "pexels:7789620"
+    "scene1": "pexels:5794038",
+    "scene2": "pexels:4506107",
+    "cta": "pexels:31144011"
   },
   "sameAs": [],
   "tracking": {
@@ -152,9 +152,9 @@
       ],
       "insurance": [],
       "photos": [
-        "pexels:33812025",
         "pexels:5473182",
-        "pexels:7789603"
+        "pexels:4506107",
+        "pexels:1172019"
       ]
     },
     {
@@ -187,9 +187,9 @@
       ],
       "insurance": [],
       "photos": [
-        "pexels:19921278",
-        "pexels:5473182",
-        "pexels:7789620"
+        "pexels:5794038",
+        "pexels:31144011",
+        "pexels:5473182"
       ]
     }
   ],
@@ -456,5 +456,11 @@
       "ينفع ألغي أو أغيّر الميعاد؟",
       "أيوه، بالرد على رسالة التأكيد على الواتساب."
     ]
-  ]
+  ],
+  "style": "sport",
+  "fonts": {
+    "query": "family=Cairo:wght@400;600;800;900",
+    "body": "\"Cairo\",system-ui,sans-serif",
+    "head": "\"Cairo\",system-ui,sans-serif"
+  }
 }

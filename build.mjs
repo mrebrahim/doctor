@@ -113,6 +113,7 @@ function buildDemo(slug) {
   const abs = (p) => origin + (process.env.BASE ? "/" : base) + p;
   const L = (p = "") => base + p;
   const isClinic = c.type === "clinic";
+  const st = c.style || "classic";
   const depts = isClinic && c.departments === true; // clinic presented by specialty, no named doctors
   for (const b of c.branches) b.mapsUrl = b.mapsUrl || (b.lat ? `https://www.google.com/maps?q=${b.lat},${b.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.mapQuery || b.address)}`);
   const docs = c.doctors;
@@ -174,14 +175,14 @@ function buildDemo(slug) {
 ${(c.brand.heroPhoto || lead.photo) ? `<meta property="og:image" content="${esc(/^(https?|pexels):/.test(c.brand.heroPhoto || lead.photo) ? imgUrl(c.brand.heroPhoto || lead.photo, 1200) : abs(c.brand.heroPhoto || lead.photo))}">` : ""}
 <meta name="theme-color" content="${theme.primary}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${c.fonts?.query || "family=Cairo:wght@600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700"}&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=${ASSET_VER}">
 <script>document.documentElement.classList.add("js")</script>
-<style>:root{--primary:${theme.primary};--primary-ink:${theme.primaryInk || theme.primary};--accent:${theme.accent};--accent-ink:${theme.accentInk || theme.primary};--bg:${theme.bg || "#F8F6F2"};--soft:${theme.soft || "#EEF4F4"}}</style>
+<style>:root{--primary:${theme.primary};--primary-ink:${theme.primaryInk || theme.primary};--accent:${theme.accent};--accent-ink:${theme.accentInk || theme.primary};--bg:${theme.bg || "#F8F6F2"};--soft:${theme.soft || "#EEF4F4"}${c.fonts ? `;--font:${c.fonts.body};--head:${c.fonts.head}` : ""}}</style>
 <link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="${theme.primary}"/><path d="M16 8v16M8 16h16" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>`)}">
 ${schema.map(ldjson).join("\n")}
 </head>
-<body>
+<body class="st-${st}">
 <a class="skip" href="#main">انتقل للمحتوى</a>
 ${c.demo !== false ? `<div class="demo-banner" role="note"><b>نموذج تجريبي</b> من ${esc(c.agency?.name || "Digital Solution Egypt")} — البيانات والمواعيد للعرض فقط ولسه محتاجة مراجعة الدكتور</div>` : ""}
 <header class="hdr">
@@ -311,11 +312,72 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
     c.rating ? { n: `${c.rating.value}★`, l: `تقييم على Google من ${c.rating.count} مريض` } : null,
     { n: "24/7", l: "حجز أونلاين وتأكيد فوري على واتساب" },
   ].filter(Boolean);
-  pages[""] = page({
-    title: c.seo.homeTitle, desc: c.seo.homeDesc, pageName: "الرئيسية",
-    schema: [orgLd, websiteLd, ...(isClinic ? [] : [physicianLd(lead)])],
-    body: `
-<section class="hero2">
+  // Each demo picks a visual style so no two clients get the same-looking site.
+  const factsHtml = c.trust.filter((t) => t.b !== "rating").slice(0, 3).map((t) => `<div><b>${esc(t.b)}</b><span>${esc(t.t)}</span></div>`).join("");
+  const heroCtas = (pos) => `<div class="btn-row reveal">
+        <a class="btn btn-primary btn-lg" href="${L("book/")}" data-track="cta_book_click" data-pos="${pos}">${icon("cal")}احجز ميعادك أونلاين</a>
+        <a class="btn btn-wa btn-lg" href="${waLink(waText("الرئيسية"))}" target="_blank" rel="noopener" data-track="cta_whatsapp_click" data-pos="${pos}">${waIcon}اسأل على الواتساب</a>
+      </div>`;
+  const nextCard = (cls = "") => `<div class="float f1 glass ${cls}"><span class="ico-sm">${icon("cal")}</span><span><small>أقرب ميعاد متاح</small><b data-hero-next>…</b></span></div>`;
+  const neuralSvg = `<svg class="neural" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2">${Array.from({ length: 26 }, (_, i) => { const r = (n) => (Math.abs(hash(slug + i + n)) % 1000) / 1000; const x1 = r(1) * 800, y1 = r(2) * 600, x2 = x1 + (r(3) - .5) * 300, y2 = y1 + (r(4) - .5) * 260; return `<path d="M${x1.toFixed(0)} ${y1.toFixed(0)} Q ${((x1 + x2) / 2 + (r(5) - .5) * 120).toFixed(0)} ${((y1 + y2) / 2 + (r(6) - .5) * 120).toFixed(0)} ${x2.toFixed(0)} ${y2.toFixed(0)}"/><circle cx="${x2.toFixed(0)}" cy="${y2.toFixed(0)}" r="3" fill="currentColor"/>`; }).join("")}</g></svg>`;
+  const heroByStyle = {
+    neuro: `
+<section class="hero-neuro">
+  ${neuralSvg}
+  <div class="wrap hn-grid">
+    <div class="hn-copy">
+      <span class="kicker reveal">${esc(c.brand.eyebrow || "")}</span>
+      <h1 class="reveal">${esc(h1Lead)}${h1Rest.length ? `<span class="hl">${esc(h1Rest.join(" – "))}</span>` : ""}</h1>
+      <p class="sub reveal">${esc(c.brand.subtitle)}</p>
+      ${heroCtas("hero")}
+      <div class="hn-facts reveal">${factsHtml}</div>
+    </div>
+    <div class="hn-visual reveal">
+      <span class="ring r1" aria-hidden="true"></span><span class="ring r2" aria-hidden="true"></span>
+      <div class="hn-photo">${photo(lead.photo, lead.name, "person", "", true, 900)}</div>
+      ${nextCard("dark")}
+    </div>
+  </div>
+</section>`,
+    family: `
+<section class="hero-family">
+  <span class="bubble b1" aria-hidden="true"></span><span class="bubble b2" aria-hidden="true"></span><span class="bubble b3" aria-hidden="true"></span>
+  <div class="wrap hf-inner">
+    <div class="hf-logo reveal">${photo(c.brand.heroPhoto || lead.photo, c.brand.name, "place", "", true, 600)}</div>
+    <span class="pill reveal"><span class="dot" aria-hidden="true"></span>الحجز أونلاين متاح 24 ساعة</span>
+    <h1 class="reveal">${esc(h1Lead)}${h1Rest.length ? `<span class="hl">${esc(h1Rest.join(" – "))}</span>` : ""}</h1>
+    <p class="sub reveal">${esc(c.brand.subtitle)}</p>
+    <div class="hf-pick reveal">
+      <b>اختار التخصص واحجز:</b>
+      <div class="hf-chips">${c.services.map((s) => `<a href="${L(`book/?service=${s.slug}`)}" data-track="cta_book_click" data-pos="hero_specialty"><span class="ico">${icon(s.icon)}</span>${esc(s.title)}</a>`).join("")}</div>
+    </div>
+    <p class="hf-next reveal">${icon("cal")} أقرب ميعاد متاح: <b data-hero-next>…</b> · <a href="${waLink(waText("الرئيسية"))}" target="_blank" rel="noopener" data-track="cta_whatsapp_click" data-pos="hero">أو اسأل على الواتساب</a></p>
+  </div>
+</section>
+<section class="stats-band">
+  <div class="wrap stats">${stats.map((s) => `<div class="stat reveal"><b>${esc(s.n)}</b><span>${esc(s.l)}</span></div>`).join("")}</div>
+</section>`,
+    sport: `
+<section class="hero-sport">
+  <span class="sh-ring a" aria-hidden="true"></span><span class="sh-ring b" aria-hidden="true"></span>
+  <div class="wrap hs-grid">
+    <div class="hs-copy">
+      <span class="tag reveal">${esc(c.brand.eyebrow || "")}</span>
+      <h1 class="reveal">${esc(h1Lead)}${h1Rest.length ? `<span class="hl">${esc(h1Rest.join(" – "))}</span>` : ""}</h1>
+      <p class="sub reveal">${esc(c.brand.subtitle)}</p>
+      ${heroCtas("hero")}
+      <div class="hs-facts reveal">${factsHtml}</div>
+    </div>
+    <div class="hs-visual reveal">
+      <span class="sun" aria-hidden="true"></span>
+      <div class="hs-photo">${photo(lead.photo, lead.name, "person", "", true, 900)}</div>
+      ${nextCard()}
+    </div>
+  </div>
+</section>
+<div class="marquee" aria-hidden="true"><div class="mq-track">${Array.from({ length: 4 }, () => c.services.map((s) => `<span>${esc(s.title)}</span><i>✦</i>`).join("")).join("")}</div></div>`,
+  };
+  const heroClassic = `<section class="hero2">
   <span class="blob b1" aria-hidden="true"></span><span class="blob b2" aria-hidden="true"></span>
   <div class="wrap hero2-grid">
     <div class="hero2-copy">
@@ -347,7 +409,12 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
 
 <section class="stats-band">
   <div class="wrap stats">${stats.map((s) => `<div class="stat reveal"><b>${esc(s.n)}</b><span>${esc(s.l)}</span></div>`).join("")}</div>
-</section>
+</section>`;
+  pages[""] = page({
+    title: c.seo.homeTitle, desc: c.seo.homeDesc, pageName: "الرئيسية",
+    schema: [orgLd, websiteLd, ...(isClinic ? [] : [physicianLd(lead)])],
+    body: `
+${heroByStyle[st] || heroClassic}
 
 <section class="sec" style="padding-top:36px">
   <div class="wrap">
