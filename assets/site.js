@@ -164,5 +164,23 @@
     }).join("");
   }
 
+  var hn = document.querySelector("[data-hero-next]");
+  if (hn) {
+    var best = null;
+    cfg.branches.forEach(function (b) {
+      var n = nextSlot(b, cfg.doctors.length > 1 ? "" : cfg.doctors[0].id);
+      if (n && (!best || n.date < best.date || (+n.date === +best.date && n.slot.time < best.slot.time))) { best = n; best.area = b.area; }
+    });
+    hn.textContent = best ? dayLabel(best.date) + " " + t12(best.slot.time) + " · " + best.area : "سجّل في قائمة الانتظار";
+  }
+
+  var rv = document.querySelectorAll(".reveal");
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { rootMargin: "0px 0px -8% 0px" });
+    rv.forEach(function (el, i) { el.style.transitionDelay = (i % 4) * 70 + "ms"; io.observe(el); });
+  } else rv.forEach(function (el) { el.classList.add("in"); });
+
   window.DSE = { cfg: cfg, store: store, cairoNow: cairoNow, iso: iso, t12: t12, hash: hash, dayLabel: dayLabel, fullDate: fullDate, branch: branch, slotsFor: slotsFor, days: days, nextSlot: nextSlot, myBookings: myBookings, track: track, DAY_AR: DAY_AR, MONTH_AR: MONTH_AR };
 })();

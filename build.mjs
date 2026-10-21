@@ -90,13 +90,13 @@ const waIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 function initials(name) {
   return name.replace(/^(د\.|دكتور|دكتورة)\s*/, "").split(/\s+/).slice(0, 2).map((w) => w[0]).join(" ");
 }
-function placeholderSvg(kind, label, theme) {
+function placeholderSvg(kind, label, theme, hint = true) {
   const a = theme.primary, b = theme.accent;
   const id = "g" + Math.abs(hash(kind + label)).toString(36);
   if (kind === "person") {
-    return `<svg viewBox="0 0 400 500" role="img" aria-label="${esc(label)}" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="400" height="500" fill="url(#${id})"/><circle cx="200" cy="190" r="78" fill="#fff" opacity=".22"/><path d="M70 500c0-90 58-150 130-150s130 60 130 150z" fill="#fff" opacity=".22"/><text x="200" y="212" text-anchor="middle" font-family="Cairo,sans-serif" font-size="64" font-weight="700" fill="#fff">${esc(initials(label))}</text><text x="200" y="44" text-anchor="middle" font-family="IBM Plex Sans Arabic,sans-serif" font-size="18" fill="#fff" opacity=".9">مكان صورة الدكتور (من Google Maps)</text></svg>`;
+    return `<svg viewBox="0 0 400 500" role="img" aria-label="${esc(label)}" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="400" height="500" fill="url(#${id})"/><circle cx="200" cy="190" r="78" fill="#fff" opacity=".22"/><path d="M70 500c0-90 58-150 130-150s130 60 130 150z" fill="#fff" opacity=".22"/><text x="200" y="212" text-anchor="middle" font-family="Cairo,sans-serif" font-size="64" font-weight="700" fill="#fff">${esc(initials(label))}</text>${hint ? '<text x="200" y="44" text-anchor="middle" font-family="IBM Plex Sans Arabic,sans-serif" font-size="18" fill="#fff" opacity=".9">مكان صورة الدكتور</text>' : ""}</svg>`;
   }
-  return `<svg viewBox="0 0 400 300" role="img" aria-label="${esc(label)}" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="${id}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="${a}" stop-opacity=".85"/><stop offset="1" stop-color="${b}" stop-opacity=".75"/></linearGradient></defs><rect width="400" height="300" fill="url(#${id})"/><g fill="none" stroke="#fff" stroke-width="6" opacity=".55"><rect x="150" y="90" width="100" height="80" rx="10"/><circle cx="200" cy="130" r="22"/><path d="M175 90l10-16h30l10 16"/></g><text x="200" y="230" text-anchor="middle" font-family="IBM Plex Sans Arabic,sans-serif" font-size="22" fill="#fff">${esc(label)}</text></svg>`;
+  return `<svg viewBox="0 0 400 300" role="img" aria-label="${esc(label)}" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="${id}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="${a}" stop-opacity=".85"/><stop offset="1" stop-color="${b}" stop-opacity=".75"/></linearGradient></defs><rect width="400" height="300" fill="url(#${id})"/><g fill="none" stroke="#fff" stroke-width="6" opacity=".55"><rect x="150" y="90" width="100" height="80" rx="10"/><circle cx="200" cy="130" r="22"/><path d="M175 90l10-16h30l10 16"/></g>${hint ? `<text x="200" y="230" text-anchor="middle" font-family="IBM Plex Sans Arabic,sans-serif" font-size="22" fill="#fff">${esc(label)}</text>` : ""}</svg>`;
 }
 function hash(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return h; }
 
@@ -116,10 +116,17 @@ function buildDemo(slug) {
   const lead = docs[0];
   const theme = { primary: "#0F4C5C", accent: "#14B8A6", ...c.theme };
 
-  const photo = (src, alt, kind, cls = "", eager = false) =>
-    src
-      ? `<img src="${esc(/^https?:/.test(src) ? src : L(src))}" alt="${esc(alt)}" class="${cls}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" referrerpolicy="no-referrer">`
-      : placeholderSvg(kind, alt, theme);
+  // "pexels:<id>" → free Pexels image; http(s) URL → hotlinked (e.g. Google Maps photo); else a file under demos/<slug>/.
+  const imgUrl = (src, w = 900) => {
+    const px = /^pexels:(\d+)$/.exec(src);
+    if (px) return `https://images.pexels.com/photos/${px[1]}/pexels-photo-${px[1]}.jpeg?auto=compress&cs=tinysrgb&w=${w}`;
+    return /^https?:/.test(src) ? src : L(src);
+  };
+  // The placeholder stays underneath; if the image fails to load it is removed and the placeholder shows.
+  const photo = (src, alt, kind, cls = "", eager = false, w = 900) =>
+    `<span class="media ${cls}">${placeholderSvg(kind, alt, theme, !src)}${src
+      ? `<img src="${esc(imgUrl(src, w))}"${/^pexels:/.test(src) ? ` srcset="${esc(imgUrl(src, Math.round(w / 2)))} ${Math.round(w / 2)}w, ${esc(imgUrl(src, w))} ${w}w"  sizes="(max-width: 700px) 100vw, ${Math.round(w / 2)}px"` : ""} alt="${esc(alt)}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`
+      : ""}</span>`;
 
   const waLink = (text) => `https://wa.me/${c.whatsapp}?text=${encodeURIComponent(text)}`;
   const waText = (page, branch) => `السلام عليكم، عايز أحجز كشف${branch ? " في فرع " + branch : ""}${page ? " (من صفحة: " + page + ")" : ""}`;
@@ -161,11 +168,12 @@ function buildDemo(slug) {
 <link rel="canonical" href="${canonical}">
 <meta property="og:type" content="website"><meta property="og:locale" content="ar_EG">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">
-${lead.photo ? `<meta property="og:image" content="${esc(/^https?:/.test(lead.photo) ? lead.photo : abs(lead.photo))}">` : ""}
+${(c.brand.heroPhoto || lead.photo) ? `<meta property="og:image" content="${esc(/^(https?|pexels):/.test(c.brand.heroPhoto || lead.photo) ? imgUrl(c.brand.heroPhoto || lead.photo, 1200) : abs(c.brand.heroPhoto || lead.photo))}">` : ""}
 <meta name="theme-color" content="${theme.primary}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/assets/site.css?v=${ASSET_VER}">
+<script>document.documentElement.classList.add("js")</script>
 <style>:root{--primary:${theme.primary};--primary-ink:${theme.primaryInk || theme.primary};--accent:${theme.accent};--accent-ink:${theme.accentInk || theme.primary};--bg:${theme.bg || "#F8F6F2"};--soft:${theme.soft || "#EEF4F4"}}</style>
 <link rel="icon" href="data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="${theme.primary}"/><path d="M16 8v16M8 16h16" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>`)}">
 ${schema.map(ldjson).join("\n")}
@@ -286,87 +294,135 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
   const pages = {};
 
   // HOME
+  const [h1Lead, ...h1Rest] = c.brand.h1.split(" – ");
+  const img = c.images || {};
+  const exp = c.experience || { title: "تجربة كشف مريحة من أول رسالة", points: ["سعر كشف واضح من الأول", "تأكيد وتذكير على واتساب"] };
+  const yearsBadge = ((c.trust.find((t) => /سن/.test(t.b || "")) || {}).b || "").replace(/[^\d]/g, "");
+  const allPhotos = [...new Set(c.branches.flatMap((b) => b.photos || []))];
+  const stats = [
+    ...c.trust.filter((t) => t.b !== "rating").slice(0, 2).map((t) => ({ n: t.b, l: t.t })),
+    c.rating ? { n: `${c.rating.value}★`, l: `تقييم على Google من ${c.rating.count} مريض` } : null,
+    { n: "24/7", l: "حجز أونلاين وتأكيد فوري على واتساب" },
+  ].filter(Boolean);
   pages[""] = page({
     title: c.seo.homeTitle, desc: c.seo.homeDesc, pageName: "الرئيسية",
     schema: [orgLd, websiteLd, ...(isClinic ? [] : [physicianLd(lead)])],
     body: `
-<section class="hero">
-  <div class="wrap hero-grid">
-    <div>
-      ${c.brand.eyebrow ? `<span class="eyebrow">${esc(c.brand.eyebrow)}</span>` : ""}
-      <h1>${esc(c.brand.h1)}</h1>
-      <p class="sub">${esc(c.brand.subtitle)}</p>
-      <div class="btn-row">
-        <a class="btn btn-primary" href="${L("book/")}" data-track="cta_book_click" data-pos="hero">${icon("cal")}احجز ميعادك أونلاين</a>
-        <a class="btn btn-wa" href="${waLink(waText("الرئيسية"))}" target="_blank" rel="noopener" data-track="cta_whatsapp_click" data-pos="hero">${waIcon}اسأل على الواتساب</a>
+<section class="hero2">
+  <span class="blob b1" aria-hidden="true"></span><span class="blob b2" aria-hidden="true"></span>
+  <div class="wrap hero2-grid">
+    <div class="hero2-copy">
+      <span class="pill reveal"><span class="dot" aria-hidden="true"></span>الحجز أونلاين متاح 24 ساعة · ${esc(c.brand.eyebrow || "")}</span>
+      <h1 class="reveal">${esc(h1Lead)}${h1Rest.length ? `<span class="hl">${esc(h1Rest.join(" – "))}</span>` : ""}</h1>
+      <p class="sub reveal">${esc(c.brand.subtitle)}</p>
+      <div class="btn-row reveal">
+        <a class="btn btn-primary btn-lg" href="${L("book/")}" data-track="cta_book_click" data-pos="hero">${icon("cal")}احجز ميعادك أونلاين</a>
+        <a class="btn btn-wa btn-lg" href="${waLink(waText("الرئيسية"))}" target="_blank" rel="noopener" data-track="cta_whatsapp_click" data-pos="hero">${waIcon}اسأل على الواتساب</a>
       </div>
-      <div class="trust" role="list">
-        ${c.trust.map((t) => t.b === "rating" ? `<div role="listitem"><b><span class="stars" aria-hidden="true">★</span> ${esc(c.rating.value)}</b>على Google (${esc(c.rating.count)} تقييم)</div>` : `<div role="listitem"><b>${esc(t.b)}</b>${esc(t.t)}</div>`).join("")}
+      <div class="social-proof reveal">
+        <span class="faces" aria-hidden="true">${["م", "س", "ك", "ن"].map((x) => `<i>${x}</i>`).join("")}</span>
+        <span><b><span class="stars">★★★★★</span> ${esc(c.rating?.value || "")}</b><br><span class="muted small">من ${esc(c.rating?.count || "")} تقييم على Google</span></span>
       </div>
     </div>
-    <div class="hero-photo">${photo(c.brand.heroPhoto || lead.photo, isClinic ? c.brand.name : lead.name, isClinic ? "place" : "person", "", true)}${isClinic ? "" : `<div class="tag"><b>${esc(lead.name)}</b><br>${esc(lead.degreeLine)}</div>`}</div>
+    <div class="hero2-visual reveal">
+      <div class="arch">${photo(c.brand.heroPhoto || lead.photo, isClinic ? c.brand.name : lead.name, isClinic ? "place" : "person", "", true, 1000)}</div>
+      <div class="float f1 glass"><span class="ico-sm">${icon("cal")}</span><span><small>أقرب ميعاد متاح</small><b data-hero-next>…</b></span></div>
+      <div class="float f2 glass"><span class="ico-sm gold">${icon("star")}</span><span><b>${esc(c.rating?.value || "")} / 5</b><small>${esc(c.rating?.count || "")} تقييم</small></span></div>
+      ${isClinic
+        ? `<div class="float f3 glass team"><span class="faces">${docs.map((d) => `<span class="avatar xs">${photo(d.photo, d.name, "person", "", false, 200)}</span>`).join("")}</span><span><b>${docs.length} أطباء متخصصين</b><small>اختار دكتورك وقت الحجز</small></span></div>`
+        : `<div class="float f3 glass"><span class="ico-sm">${icon("shield")}</span><span><b>${esc(lead.degreeLine.split(" – ")[0])}</b><small>${esc(lead.degreeLine.split(" – ")[1] || "")}</small></span></div>`}
+    </div>
   </div>
 </section>
 
-<section class="sec" style="padding-top:8px">
+<section class="stats-band">
+  <div class="wrap stats">${stats.map((s) => `<div class="stat reveal"><b>${esc(s.n)}</b><span>${esc(s.l)}</span></div>`).join("")}</div>
+</section>
+
+<section class="sec" style="padding-top:36px">
   <div class="wrap">
-    <div class="sec-head"><div><h2>أقرب ميعاد متاح</h2><p class="muted">المواعيد بتتحدّث لحظيًا · الحجز بياخد أقل من دقيقة</p></div></div>
+    <div class="sec-head"><div><span class="eyebrow">مواعيد لحظية</span><h2>أقرب ميعاد متاح في كل فرع</h2></div></div>
     <div class="slot-cards" data-next-slots>${c.branches.map(() => '<div class="skeleton" style="height:76px;border-radius:12px"></div>').join("")}</div>
   </div>
 </section>
 
 <section class="sec sec-soft">
   <div class="wrap">
-    <div class="sec-head"><div><span class="eyebrow">الخدمات</span><h2>${esc(c.servicesHeading || "بنساعدك في إيه؟")}</h2></div><a class="more" href="${L("services/")}">كل الخدمات ←</a></div>
-    <div class="grid g3">${c.services.map((s) => `<a class="card" href="${L(`services/${s.slug}/`)}"><div class="ico">${icon(s.icon)}</div><h3>${esc(s.title)}</h3><p class="muted small">${esc(s.short)}</p><span class="more">اعرف أكتر ←</span></a>`).join("")}</div>
+    <div class="sec-head"><div><span class="eyebrow">${isClinic ? "التخصصات" : "الخدمات"}</span><h2>${esc(c.servicesHeading || "بنساعدك في إيه؟")}</h2></div><a class="more" href="${L("services/")}">كل الخدمات ←</a></div>
+    <div class="grid g3">${c.services.map((s, i) => `<a class="card svc reveal" href="${L(`services/${s.slug}/`)}"><span class="num" aria-hidden="true">0${i + 1}</span><div class="ico">${icon(s.icon)}</div><h3>${esc(s.title)}</h3><p class="muted small">${esc(s.short)}</p><span class="more">اعرف أكتر ←</span></a>`).join("")}</div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap exp">
+    <div class="collage reveal">
+      <div class="c1">${photo(img.scene1, "داخل غرفة الكشف", "place", "", false, 900)}</div>
+      <div class="c2">${photo(img.scene2, "استشارة مع المريض", "place", "", false, 700)}</div>
+      ${yearsBadge ? `<div class="badge-round" aria-hidden="true"><b>+${esc(yearsBadge)}</b><span>سنة خبرة</span></div>` : ""}
+    </div>
+    <div class="reveal">
+      <span class="eyebrow">ليه المرضى بيرجعوا لنا؟</span>
+      <h2>${esc(exp.title)}</h2>
+      <ul class="checks">${exp.points.map((p) => `<li>${icon("check")}<span>${esc(p)}</span></li>`).join("")}</ul>
+      <a class="btn btn-primary" href="${L("book/")}" data-track="cta_book_click" data-pos="experience">${icon("cal")}احجز كشفك</a>
+    </div>
   </div>
 </section>
 
 ${isClinic ? `
-<section class="sec">
+<section class="sec sec-soft">
   <div class="wrap">
     <div class="sec-head"><div><span class="eyebrow">فريق المركز</span><h2>الأطباء</h2></div><a class="more" href="${L("about/")}">عن المركز ←</a></div>
-    <div class="grid g3">${docs.map((d) => `<a class="card doc-card" href="${L(`doctors/${d.id}/`)}"><div class="avatar">${photo(d.photo, d.name, "person")}</div><div><h3>${esc(d.name)}</h3><p class="muted small" style="margin:0">${esc(d.title)}</p></div></a>`).join("")}</div>
+    <div class="grid g3">${docs.map((d) => `<a class="card team-card reveal" href="${L(`doctors/${d.id}/`)}"><div class="team-photo">${photo(d.photo, d.name, "person", "", false, 700)}</div><div class="team-body"><h3>${esc(d.name)}</h3><p class="muted small" style="margin:0 0 8px">${esc(d.title)}</p><span class="chip">${esc(d.degreeLine)}</span></div></a>`).join("")}</div>
   </div>
 </section>` : `
-<section class="sec">
-  <div class="wrap grid g2" style="align-items:center">
-    <div>
+<section class="sec sec-soft">
+  <div class="wrap about-band">
+    <div class="about-photo reveal">${photo(lead.photo, lead.name, "person", "", false, 800)}</div>
+    <div class="reveal">
       <span class="eyebrow">عن الدكتور</span>
       <h2>${esc(lead.name)}</h2>
-      <p>${esc(lead.bio)}</p>
-      <a class="btn btn-ghost" href="${L("about/")}">اعرف أكتر عن ${esc(lead.shortName || lead.name)}</a>
+      <p class="lead-quote">${esc(lead.approach || lead.bio)}</p>
+      <ul class="timeline">${(lead.qualifications || []).slice(0, 4).map((q) => `<li><b>${esc(q.title)}</b><br><span class="muted small">${esc(q.org || "")}${q.year ? " · " + q.year : ""}</span></li>`).join("")}</ul>
+      <a class="btn btn-ghost" href="${L("about/")}">اعرف أكتر عن ${esc(lead.shortName || lead.name)} ←</a>
     </div>
-    <ul class="timeline">${(lead.qualifications || []).slice(0, 4).map((q) => `<li><b>${esc(q.title)}</b><br><span class="muted small">${esc(q.org || "")}${q.year ? " · " + q.year : ""}</span></li>`).join("")}</ul>
   </div>
 </section>`}
 
-<section class="sec sec-soft">
+<section class="sec">
   <div class="wrap">
-    <h2>إزاي تحجز؟</h2>
-    <ol class="steps">
-      <li><div><b>اختار الفرع والميعاد</b><br><span class="muted small">من المواعيد المتاحة فعلًا</span></div></li>
-      <li><div><b>اكتب اسمك ورقمك</b><br><span class="muted small">من غير تسجيل حساب</span></div></li>
-      <li><div><b>هيوصلك تأكيد على واتساب</b><br><span class="muted small">وتذكير قبل الميعاد بيوم</span></div></li>
+    <h2 style="text-align:center">إزاي تحجز؟ <span class="muted" style="font-weight:400">أقل من دقيقة</span></h2>
+    <ol class="steps steps2">
+      <li class="reveal"><span class="ico">${icon("pin")}</span><div><b>اختار الفرع والميعاد</b><br><span class="muted small">من المواعيد المتاحة فعلًا</span></div></li>
+      <li class="reveal"><span class="ico">${icon("user")}</span><div><b>اكتب اسمك ورقمك</b><br><span class="muted small">من غير تسجيل حساب</span></div></li>
+      <li class="reveal"><span class="ico wa">${waIcon}</span><div><b>هيوصلك تأكيد على واتساب</b><br><span class="muted small">وتذكير قبل الميعاد بيوم</span></div></li>
     </ol>
   </div>
 </section>
 
-<section class="sec">
+<section class="sec sec-dark">
   <div class="wrap">
-    <div class="sec-head"><div><span class="eyebrow">آراء المرضى</span><h2>${ratingLine}</h2></div><a class="more" href="${L("reviews/")}">كل التقييمات ←</a></div>
+    <div class="sec-head"><div><span class="eyebrow light">آراء المرضى</span><h2>${ratingLine}</h2></div><a class="more light" href="${L("reviews/")}">كل التقييمات ←</a></div>
     ${sampleNote}
-    <div class="grid g3" style="margin-top:12px">${c.reviews.slice(0, 3).map(reviewCard).join("")}</div>
+    <div class="rev-scroll" tabindex="0" aria-label="تقييمات المرضى">${c.reviews.map(reviewCard).join("")}</div>
   </div>
 </section>
 
-<section class="sec sec-soft" id="branches">
+<section class="sec" id="branches">
   <div class="wrap">
-    <h2>${c.branches.length > 1 ? "فروعنا" : "العنوان والمواعيد"}</h2>
+    <div class="sec-head"><div><span class="eyebrow">العنوان والمواعيد</span><h2>${c.branches.length > 1 ? "فروعنا" : "مكاننا"}</h2></div></div>
     ${c.branches.length > 1 ? `<div class="tabs" role="tablist">${c.branches.map((b, i) => `<button class="tab" role="tab" id="tab-${b.id}" aria-controls="panel-${b.id}" aria-selected="${i === 0}">${esc(b.area)}</button>`).join("")}</div>` : ""}
     ${c.branches.map((b, i) => `<div role="tabpanel" id="panel-${b.id}" aria-labelledby="tab-${b.id}" ${i ? "hidden" : ""}>${branchCard(b)}</div>`).join("")}
   </div>
 </section>
+
+${allPhotos.length ? `
+<section class="sec sec-soft">
+  <div class="wrap">
+    <div class="sec-head"><div><span class="eyebrow">جولة في العيادة</span><h2>مكان مريح ونضيف</h2></div></div>
+    <div class="bento">${allPhotos.slice(0, 5).map((p, i) => `<figure class="reveal">${photo(p, ["الاستقبال", "منطقة الانتظار", "غرفة الكشف", "العيادة", "العيادة"][i], "place", "", false, i ? 700 : 1100)}</figure>`).join("")}</div>
+  </div>
+</section>` : ""}
 
 <section class="sec">
   <div class="wrap">
@@ -376,20 +432,21 @@ ${isClinic ? `
 </section>
 
 <section class="sec sec-soft">
-  <div class="wrap prose">
+  <div class="wrap prose" style="margin:0 auto">
     <h2>أسئلة شائعة</h2>
     ${faqHtml(c.faq.slice(0, 5))}
     <a class="more" href="${L("faq/")}">كل الأسئلة ←</a>
   </div>
 </section>
 
-<section class="sec">
-  <div class="wrap" style="text-align:center">
+<section class="cta-band">
+  <div class="cta-bg">${photo(img.cta, "", "place", "", false, 1600)}</div>
+  <div class="wrap cta-inner reveal">
     <h2>${esc(c.closingCta)}</h2>
-    <p class="muted">الحجز بياخد أقل من دقيقة، والتأكيد بيوصلك على واتساب.</p>
+    <p>الحجز بياخد أقل من دقيقة، والتأكيد بيوصلك على واتساب.</p>
     <div class="btn-row" style="justify-content:center">
-      <a class="btn btn-primary" href="${L("book/")}" data-track="cta_book_click" data-pos="closing">${icon("cal")}احجز دلوقتي</a>
-      <a class="btn btn-ghost" href="tel:${c.phone}" data-track="cta_call_click" data-pos="closing">${icon("phone")}اتصل بالعيادة</a>
+      <a class="btn btn-primary btn-lg" href="${L("book/")}" data-track="cta_book_click" data-pos="closing">${icon("cal")}احجز دلوقتي</a>
+      <a class="btn btn-light btn-lg" href="tel:${c.phone}" data-track="cta_call_click" data-pos="closing">${icon("phone")}اتصل بالعيادة</a>
     </div>
   </div>
 </section>`,
@@ -410,10 +467,14 @@ ${isClinic ? `
 
   // ABOUT + DOCTORS
   const doctorBody = (d, h1) => `
-<section class="ph"><div class="wrap">${crumbs(isClinic ? [["about/", "عن المركز"], ["", d.name]] : [["", "عن الدكتور"]])}<h1>${esc(h1)}</h1><p class="muted" style="margin:0">${esc(d.title)}</p></div></section>
+<section class="ph profile"><div class="wrap profile-grid">
+  <div>${crumbs(isClinic ? [["about/", "عن المركز"], ["", d.name]] : [["", "عن الدكتور"]])}<h1>${esc(h1)}</h1><p class="muted">${esc(d.title)}</p>
+    <div class="btn-row"><a class="btn btn-primary" href="${L(`book/${isClinic ? "?doctor=" + d.id : ""}`)}" data-track="cta_book_click" data-pos="profile">${icon("cal")}احجز مع ${esc(d.shortName || d.name)}</a></div></div>
+  <div class="profile-photo">${photo(d.photo, d.name, "person", "", true, 800)}</div>
+</div></section>
 <section class="sec"><div class="wrap layout">
   <div class="prose">
-    <div class="doc-card" style="margin-bottom:20px"><div class="avatar" style="width:120px;height:120px">${photo(d.photo, d.name, "person")}</div><div><b>${esc(d.name)}</b><br><span class="muted">${esc(d.degreeLine)}</span>${d.syndicateNo ? `<br><span class="chip">رقم القيد بالنقابة: <span class="ltr">${esc(d.syndicateNo)}</span></span>` : ""}</div></div>
+    <p><span class="chip">${esc(d.degreeLine)}</span> ${d.syndicateNo ? `<span class="chip">رقم القيد بالنقابة: <span class="ltr">${esc(d.syndicateNo)}</span></span>` : ""}</p>
     <p>${esc(d.bio)}</p>
     ${d.approach ? `<h2>طريقة العلاج</h2><p>${esc(d.approach)}</p>` : ""}
     <h2>المؤهلات</h2>
