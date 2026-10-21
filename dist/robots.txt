@@ -1,0 +1,3 @@
+# Demo sites — not for indexing
+User-agent: *
+Disallow: /

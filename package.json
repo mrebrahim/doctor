@@ -1,0 +1,11 @@
+{
+  "name": "dse-clinic-demos",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "npx wrangler pages dev dist",
+    "deploy": "node build.mjs && npx wrangler pages deploy dist --project-name dse-demos",
+    "new": "node scripts/new-demo.mjs"
+  }
+}
