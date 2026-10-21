@@ -308,7 +308,7 @@ h2{font-size:24px}
 .faces>*:first-child{margin-inline-start:0}
 .faces>i:nth-child(2){background:var(--accent-ink)}.faces>i:nth-child(3){background:#b45309}.faces>i:nth-child(4){background:#7c3aed}
 .hero2-visual{position:relative;max-width:460px;width:100%;margin:0 auto;padding:18px 18px 34px}
-@media(max-width:899px){.hero2-visual{max-width:340px}.hero2 h1{font-size:30px}}
+@media(max-width:899px){.hero2-visual{order:-1;max-width:270px;padding:12px 12px 26px}.hero2 h1{font-size:30px}.float{transform:scale(.9)}}
 .arch{position:relative;aspect-ratio:4/5;border-radius:999px 999px 28px 28px;overflow:hidden;box-shadow:0 30px 60px -20px color-mix(in srgb,var(--primary) 55%,transparent);outline:10px solid #fff}
 .arch::before{content:"";position:absolute;inset:-36px -36px auto auto;width:120px;height:120px;border-radius:50%;border:2px dashed var(--accent);opacity:.6;z-index:-1}
 .hero2-visual::before{content:"";position:absolute;inset:auto -10px 0 auto;width:70%;height:70%;border-radius:999px 999px 28px 28px;background:linear-gradient(160deg,var(--accent),var(--primary));opacity:.18;transform:rotate(6deg);z-index:-1}
@@ -417,3 +417,4 @@ h2{font-size:24px}
 @media(min-width:900px){.profile-grid{grid-template-columns:1fr 300px;gap:48px}}
 .profile-photo{aspect-ratio:4/5;max-width:300px;width:70%;border-radius:999px 999px 24px 24px;overflow:hidden;outline:8px solid #fff;box-shadow:0 24px 50px -24px rgba(15,23,42,.5);margin-inline:auto}
 @media(min-width:900px){.profile-photo{width:100%}}
+@media(max-width:899px){.float.f2{display:none}}

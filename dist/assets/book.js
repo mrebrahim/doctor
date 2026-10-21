@@ -70,10 +70,10 @@
   function rVisit() {
     root.innerHTML = header("نوع الزيارة") + summary() + '<div class="choice-grid c3">' + cfg.visitTypes.map(function (v) {
       return '<button class="choice" type="button" data-v="' + esc(v) + '" aria-pressed="' + (st.visit === v) + '"><b>' + esc(v) + "</b></button>";
-    }).join("") + '</div><h3 style="margin-top:18px">سبب الزيارة <span class="muted small">(اختياري)</span></h3><p class="muted small">بيوصل للدكتور بس علشان يستعد لحالتك — مش بيتشارك مع أي جهة.</p><div class="chips">' +
-      cfg.reasons.concat(cfg.services.map(function (s) { return s.title; })).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (r) {
+    }).join("") + (cfg.askService ? '</div><h3 style="margin-top:18px">التخصص</h3><div class="chips">' : '</div><h3 style="margin-top:18px">سبب الزيارة <span class="muted small">(اختياري)</span></h3><p class="muted small">بيوصل للدكتور بس علشان يستعد لحالتك — مش بيتشارك مع أي جهة.</p><div class="chips">') +
+      (cfg.askService ? [] : cfg.reasons).concat(cfg.services.map(function (s) { return s.title; })).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (r) {
         return '<button class="chipbtn" type="button" data-r="' + esc(r) + '" aria-pressed="' + (st.reason === r) + '">' + esc(r) + "</button>";
-      }).join("") + "</div>" + nav("التالي", !st.visit);
+      }).join("") + "</div>" + nav("التالي", !st.visit || (cfg.askService && !st.reason));
     bind("[data-v]", function (el) { st.visit = el.dataset.v; render(); });
     bind("[data-r]", function (el) { st.reason = st.reason === el.dataset.r ? "" : el.dataset.r; render(); });
   }
@@ -180,7 +180,7 @@
     if (!cfg.api || location.protocol === "file:") return Promise.resolve({ whatsapp: "not_configured" });
     var b = D.branch(bk.branch), d = doctor(bk.doctor) || cfg.doctors[0];
     var payload = {
-      demo: cfg.slug, id: bk.id, name: bk.name, phone: bk.phone, branch: b.area, address: b.address, mapsUrl: b.mapsUrl, doctor: d.name, clinic: cfg.name,
+      demo: cfg.slug, id: bk.id, name: bk.name, phone: bk.phone, branch: b.area, address: b.address, mapsUrl: b.mapsUrl, doctor: who(bk, d).replace(/^مع /, ""), clinic: cfg.name,
       dateText: D.fullDate(new Date(bk.date + "T00:00")), timeText: bk.queue ? "فترة من " + D.t12(bk.time) : D.t12(bk.time),
       visit: bk.visit, attribution: bk.attribution, website: "",
     }; // reason/note intentionally stay on the device in the demo
@@ -189,9 +189,10 @@
       .then(function (r) { return r.ok ? r.json() : { whatsapp: "failed" }; })
       .catch(function () { return { whatsapp: "not_configured" }; });
   }
+  function who(bk, d) { return cfg.askService && bk.reason ? "في عيادة " + bk.reason : "مع " + d.name; }
   function confirmText(bk) {
     var b = D.branch(bk.branch), d = doctor(bk.doctor) || cfg.doctors[0];
-    return "أهلًا " + bk.name + "، ميعادك مع " + d.name + " اتأكد ✅\n" + D.fullDate(new Date(bk.date + "T00:00")) + " – " + (bk.queue ? "فترة من " + D.t12(bk.time) + " (دورك المتوقع حوالي رقم " + bk.number + ")" : D.t12(bk.time)) +
+    return "أهلًا " + bk.name + "، ميعادك " + who(bk, d) + " اتأكد ✅\n" + D.fullDate(new Date(bk.date + "T00:00")) + " – " + (bk.queue ? "فترة من " + D.t12(bk.time) + " (دورك المتوقع حوالي رقم " + bk.number + ")" : D.t12(bk.time)) +
       "\nفرع " + b.area + ": " + b.address + "\nالخريطة: " + b.mapsUrl + "\nرقم الحجز: " + bk.id + "\nللتعديل أو الإلغاء رد على الرسالة دي.";
   }
   function ics(bk) {
@@ -209,7 +210,7 @@
     var waSelf = "https://wa.me/2" + bk.phone + "?text=" + encodeURIComponent(confirmText(bk));
     var sent = bk.whatsapp === "sent";
     root.innerHTML = '<div class="success"><div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></div>' +
-      '<h2>تم حجز ميعادك ✅</h2><p style="font-size:19px"><b>' + esc(D.fullDate(new Date(bk.date + "T00:00"))) + " – " + (bk.queue ? "فترة من " + D.t12(bk.time) : D.t12(bk.time)) + "</b><br>" + esc(d.name) + " · فرع " + esc(b.area) + "</p>" +
+      '<h2>تم حجز ميعادك ✅</h2><p style="font-size:19px"><b>' + esc(D.fullDate(new Date(bk.date + "T00:00"))) + " – " + (bk.queue ? "فترة من " + D.t12(bk.time) : D.t12(bk.time)) + "</b><br>" + esc(who(bk, d).replace(/^مع /, "")) + " · فرع " + esc(b.area) + "</p>" +
       (bk.queue ? '<p class="muted">دورك المتوقع حوالي رقم ' + bk.number + "</p>" : "") +
       '<p class="muted small">رقم الحجز: <span class="ltr">' + bk.id + "</span></p>" +
       (sent ? '<div class="note info">اتبعتلك رسالة تأكيد على واتساب على رقم <span class="ltr">' + esc(bk.phone) + "</span> 📩</div>"

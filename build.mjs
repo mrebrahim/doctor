@@ -81,6 +81,7 @@ const I = {
   brace: '<path d="M3 12h18"/><rect x="5" y="9" width="3" height="6" rx="1"/><rect x="10.5" y="9" width="3" height="6" rx="1"/><rect x="16" y="9" width="3" height="6" rx="1"/>',
   root: '<path d="M7 3c-2.5 0-4 2-4 4.5 0 3 2 5 2 5M17 3c2.5 0 4 2 4 4.5 0 3-2 5-2 5"/><path d="M9 12l-1 9M15 12l1 9M12 10v6"/>',
   smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14a5 5 0 0 0 8 0M9 9h.01M15 9h.01"/>',
+  scale: '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M8 9a5 5 0 0 1 8 0l-3 3"/>',
   plus: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
 };
 const icon = (n, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n] || I.plus}</svg>`;
@@ -112,6 +113,8 @@ function buildDemo(slug) {
   const abs = (p) => origin + (process.env.BASE ? "/" : base) + p;
   const L = (p = "") => base + p;
   const isClinic = c.type === "clinic";
+  const depts = isClinic && c.departments === true; // clinic presented by specialty, no named doctors
+  for (const b of c.branches) b.mapsUrl = b.mapsUrl || (b.lat ? `https://www.google.com/maps?q=${b.lat},${b.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.mapQuery || b.address)}`);
   const docs = c.doctors;
   const lead = docs[0];
   const theme = { primary: "#0F4C5C", accent: "#14B8A6", ...c.theme };
@@ -138,10 +141,10 @@ function buildDemo(slug) {
   const clientCfg = {
     slug, base, name: c.brand.name, short: c.brand.short, whatsapp: c.whatsapp, phone: c.phone,
     api: c.bookingApi !== false, tracking: c.tracking || {},
-    fee: c.fees, visitTypes: c.visitTypes || ["كشف جديد", "استشارة (متابعة خلال " + c.fees.followupDays + " يوم)", "متابعة بعد إجراء"],
-    reasons: c.reasons || [],
+    fee: c.fees, visitTypes: c.visitTypes || ["كشف جديد", "استشارة", "متابعة بعد إجراء"],
+    reasons: c.reasons || [], askService: depts,
     doctors: docs.map((d) => ({ id: d.id, name: d.name, title: d.title, branches: d.branches || c.branches.map((b) => b.id), services: d.services || [] })),
-    branches: c.branches.map((b) => ({ id: b.id, name: b.name, area: b.area, address: b.address, phone: b.phone, hours: b.hours, slotMinutes: b.slotMinutes || 20, bookingType: b.bookingType || "slot", queueCapacity: b.queueCapacity || 15, mapsUrl: b.mapsUrl || `https://www.google.com/maps?q=${b.lat},${b.lng}`, lat: b.lat, lng: b.lng })),
+    branches: c.branches.map((b) => ({ id: b.id, name: b.name, area: b.area, address: b.address, phone: b.phone, hours: b.hours, slotMinutes: b.slotMinutes || 20, bookingType: b.bookingType || "slot", queueCapacity: b.queueCapacity || 15, mapsUrl: b.mapsUrl, lat: b.lat, lng: b.lng })),
     services: c.services.map((s) => ({ slug: s.slug, title: s.title })),
   };
 
@@ -149,7 +152,7 @@ function buildDemo(slug) {
   const nav = [
     ["services/", "الخدمات"],
     ["branches/", "الفروع"],
-    ["about/", isClinic ? "عن المركز والأطباء" : "عن الدكتور"],
+    ["about/", depts ? "عن العيادات" : isClinic ? "عن المركز والأطباء" : "عن الدكتور"],
     ["articles/", "مقالات"],
     ["reviews/", "آراء المرضى"],
   ];
@@ -235,13 +238,17 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
   const crumbSchema = (items) => ({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [["", "الرئيسية"], ...items].map(([h, t], i) => ({ "@type": "ListItem", position: i + 1, name: t, item: abs(h) })) });
   const faqSchema = (qa) => ({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: qa.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) });
   const faqHtml = (qa) => qa.map(([q, a]) => `<details><summary>${esc(q)}</summary><div>${esc(a)}</div></details>`).join("");
-  const ratingLine = c.rating ? `<span class="stars" aria-hidden="true">★</span> ${esc(c.rating.value)} على Google (${esc(c.rating.count)} تقييم)` : "";
+  const fees = c.fees || {};
+  const feeText = (sep) => fees.consult
+    ? `الكشف: ${esc(fees.consult)} جنيه${fees.followupDays ? `${sep}الاستشارة خلال ${esc(fees.followupDays)} يوم: ${esc(fees.followupLabel || "مجانًا")}` : ""}`
+    : "سعر الكشف بيتأكد مع الاستقبال أو على واتساب";
+  const ratingLine = c.rating ? `<span class="stars" aria-hidden="true">★</span> ${esc(c.rating.value)} على Google (${esc(c.rating.count)} تقييم)` : "تجارب المرضى";
   const emergency = `<div class="note danger" role="note"><b>حالة طارئة؟</b> ${esc(c.emergencyText || "لو عندك إصابة شديدة أو نزيف أو ألم مفاجئ شديد، توجّه لأقرب طوارئ فورًا أو اتصل بالإسعاف")} <span class="ltr">123</span>.</div>`;
   const disclaimer = `<div class="note info" role="note">المعلومات دي توعوية ومش بديل عن الكشف الطبي. القرار العلاجي بيتاخد بعد الكشف ومراجعة حالتك.</div>`;
   const sampleNote = c.reviewsAreSamples !== false ? `<p class="sample-note">التقييمات المعروضة هنا نماذج توضيحية للديمو، وهتتبدّل بتقييمات Google الحقيقية بعد موافقة أصحابها.</p>` : "";
 
   const hoursTable = (b) => `<table class="hours" data-hours="${b.id}"><caption class="sr-only">مواعيد ${esc(b.name)}</caption><tbody>${WEEK_ORDER.map((k) => `<tr data-day="${k}"><th scope="row">${DAY_AR[k]}</th><td>${b.hours[k]?.length ? b.hours[k].map(rangeAr).join(" · ") : '<span class="muted">مقفول — الحجز الأونلاين متاح</span>'}</td></tr>`).join("")}</tbody></table>`;
-  const mapBox = (b) => `<div class="map" data-map="${b.lat},${b.lng}"><button class="map-facade" type="button" aria-label="اعرض خريطة ${esc(b.name)}"><span><span class="pin" aria-hidden="true"></span><b>${esc(b.name)}</b><br><span class="small">${esc(b.landmark || b.address)}</span><br><span class="more">اضغط لعرض الخريطة</span></span></button></div>`;
+  const mapBox = (b) => `<div class="map" data-map="${b.lat ? `${b.lat},${b.lng}` : encodeURIComponent(b.mapQuery || b.address)}"><button class="map-facade" type="button" aria-label="اعرض خريطة ${esc(b.name)}"><span><span class="pin" aria-hidden="true"></span><b>${esc(b.name)}</b><br><span class="small">${esc(b.landmark || b.address)}</span><br><span class="more">اضغط لعرض الخريطة</span></span></button></div>`;
   const branchCard = (b) => `
     <div class="branch">
       <div class="card">
@@ -254,7 +261,7 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
         <div style="margin-top:12px">${hoursTable(b)}</div>
         <div class="btn-row" style="margin-top:14px">
           <a class="btn btn-primary btn-sm" href="${L(`book/?branch=${b.id}`)}" data-track="cta_book_click" data-branch="${b.id}" data-pos="branch_card">احجز في الفرع ده</a>
-          <a class="btn btn-ghost btn-sm" href="${esc(b.mapsUrl || `https://www.google.com/maps?q=${b.lat},${b.lng}`)}" target="_blank" rel="noopener" data-track="directions_click" data-branch="${b.id}">${icon("pin")}الاتجاهات</a>
+          <a class="btn btn-ghost btn-sm" href="${esc(b.mapsUrl)}" target="_blank" rel="noopener" data-track="directions_click" data-branch="${b.id}">${icon("pin")}الاتجاهات</a>
           <a class="btn btn-ghost btn-sm" href="tel:${b.phone}" data-track="cta_call_click" data-branch="${b.id}" data-pos="branch_card">${icon("phone")}اتصل</a>
         </div>
       </div>
@@ -276,11 +283,11 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
     "@context": "https://schema.org", "@type": "MedicalClinic", "@id": clinicId(b), name: b.schemaName || `${c.brand.name} – ${b.area}`,
     url: abs(`branches/${b.id}/`), telephone: b.phone, priceRange: c.fees?.consult ? `${c.fees.consult} EGP` : undefined,
     address: { "@type": "PostalAddress", streetAddress: b.street || b.address, addressLocality: b.area, addressRegion: b.region || "القاهرة", addressCountry: "EG" },
-    geo: { "@type": "GeoCoordinates", latitude: b.lat, longitude: b.lng }, hasMap: b.mapsUrl,
+    geo: b.lat ? { "@type": "GeoCoordinates", latitude: b.lat, longitude: b.lng } : undefined, hasMap: b.mapsUrl,
     openingHoursSpecification: Object.entries(b.hours).flatMap(([k, rs]) => rs.map((r) => ({ "@type": "OpeningHoursSpecification", dayOfWeek: `https://schema.org/${DAY_SCHEMA[k]}`, opens: r.split("-")[0], closes: r.split("-")[1] }))),
     medicalSpecialty: (c.schemaSpecialty || []).map((s) => `https://schema.org/${s}`),
     availableService: c.services.map((s) => ({ "@type": "MedicalProcedure", name: s.title })),
-    physician: docs.filter((d) => !d.branches || d.branches.includes(b.id)).map((d) => ({ "@id": docId(d) })),
+    physician: depts ? undefined : docs.filter((d) => !d.branches || d.branches.includes(b.id)).map((d) => ({ "@id": docId(d) })),
     parentOrganization: { "@id": orgId },
   });
   const orgLd = {
@@ -300,7 +307,7 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
   const yearsBadge = ((c.trust.find((t) => /سن/.test(t.b || "")) || {}).b || "").replace(/[^\d]/g, "");
   const allPhotos = [...new Set(c.branches.flatMap((b) => b.photos || []))];
   const stats = [
-    ...c.trust.filter((t) => t.b !== "rating").slice(0, 2).map((t) => ({ n: t.b, l: t.t })),
+    ...c.trust.filter((t) => t.b !== "rating").slice(0, c.rating ? 2 : 3).map((t) => ({ n: t.b, l: t.t })),
     c.rating ? { n: `${c.rating.value}★`, l: `تقييم على Google من ${c.rating.count} مريض` } : null,
     { n: "24/7", l: "حجز أونلاين وتأكيد فوري على واتساب" },
   ].filter(Boolean);
@@ -319,16 +326,19 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
         <a class="btn btn-primary btn-lg" href="${L("book/")}" data-track="cta_book_click" data-pos="hero">${icon("cal")}احجز ميعادك أونلاين</a>
         <a class="btn btn-wa btn-lg" href="${waLink(waText("الرئيسية"))}" target="_blank" rel="noopener" data-track="cta_whatsapp_click" data-pos="hero">${waIcon}اسأل على الواتساب</a>
       </div>
-      <div class="social-proof reveal">
+      ${c.rating ? `<div class="social-proof reveal">
         <span class="faces" aria-hidden="true">${["م", "س", "ك", "ن"].map((x) => `<i>${x}</i>`).join("")}</span>
         <span><b><span class="stars">★★★★★</span> ${esc(c.rating?.value || "")}</b><br><span class="muted small">من ${esc(c.rating?.count || "")} تقييم على Google</span></span>
-      </div>
+      </div>` : ""}
     </div>
     <div class="hero2-visual reveal">
       <div class="arch">${photo(c.brand.heroPhoto || lead.photo, isClinic ? c.brand.name : lead.name, isClinic ? "place" : "person", "", true, 1000)}</div>
       <div class="float f1 glass"><span class="ico-sm">${icon("cal")}</span><span><small>أقرب ميعاد متاح</small><b data-hero-next>…</b></span></div>
-      <div class="float f2 glass"><span class="ico-sm gold">${icon("star")}</span><span><b>${esc(c.rating?.value || "")} / 5</b><small>${esc(c.rating?.count || "")} تقييم</small></span></div>
-      ${isClinic
+      ${c.rating ? `<div class="float f2 glass"><span class="ico-sm gold">${icon("star")}</span><span><b>${esc(c.rating.value)} / 5</b><small>${esc(c.rating.count)} تقييم</small></span></div>`
+        : `<div class="float f2 glass"><span class="ico-sm gold">${icon("clock")}</span><span><b>حجز 24/7</b><small>تأكيد فوري على واتساب</small></span></div>`}
+      ${depts
+        ? `<div class="float f3 glass"><span class="ico-sm">${icon("plus")}</span><span><b>${c.services.length} تخصصات</b><small>في مكان واحد</small></span></div>`
+        : isClinic
         ? `<div class="float f3 glass team"><span class="faces">${docs.map((d) => `<span class="avatar xs">${photo(d.photo, d.name, "person", "", false, 200)}</span>`).join("")}</span><span><b>${docs.length} أطباء متخصصين</b><small>اختار دكتورك وقت الحجز</small></span></div>`
         : `<div class="float f3 glass"><span class="ico-sm">${icon("shield")}</span><span><b>${esc(lead.degreeLine.split(" – ")[0])}</b><small>${esc(lead.degreeLine.split(" – ")[1] || "")}</small></span></div>`}
     </div>
@@ -369,7 +379,7 @@ ${scripts.map((s) => `<script src="/assets/${s}?v=${ASSET_VER}" defer></script>`
   </div>
 </section>
 
-${isClinic ? `
+${depts ? "" : isClinic ? `
 <section class="sec sec-soft">
   <div class="wrap">
     <div class="sec-head"><div><span class="eyebrow">فريق المركز</span><h2>الأطباء</h2></div><a class="more" href="${L("about/")}">عن المركز ←</a></div>
@@ -460,7 +470,7 @@ ${allPhotos.length ? `
   }
   const bookAside = (svc) => `<aside class="aside"><div class="card">
       <h3>احجز كشف لتقييم حالتك</h3>
-      <p class="muted small">الكشف: ${esc(c.fees.consult)} جنيه · الاستشارة خلال ${esc(c.fees.followupDays)} يوم: ${esc(c.fees.followupLabel || "مجانًا")}</p>
+      <p class="muted small">${feeText(" · ")}</p>
       <a class="btn btn-primary btn-block" href="${L(`book/${svc ? "?service=" + svc : ""}`)}" data-track="cta_book_click" data-pos="aside">${icon("cal")}احجز ميعاد</a>
       <a class="btn btn-wa btn-block" style="margin-top:8px" href="${waLink(waText(svc ? svcBySlug[svc].title : ""))}" target="_blank" rel="noopener" data-track="cta_whatsapp_click" data-pos="aside">${waIcon}اسأل على الواتساب</a>
     </div></aside>`;
@@ -494,13 +504,14 @@ ${allPhotos.length ? `
 <section class="ph"><div class="wrap">${crumbs([["", "عن المركز"]])}<h1>عن ${esc(c.brand.name)}</h1></div></section>
 <section class="sec"><div class="wrap layout"><div class="prose">
   ${(c.brand.about || []).map((p) => `<p>${esc(p)}</p>`).join("")}
-  <h2>فريق الأطباء</h2>
-  <div class="grid">${docs.map((d) => `<a class="card doc-card" href="${L(`doctors/${d.id}/`)}"><div class="avatar">${photo(d.photo, d.name, "person")}</div><div><h3>${esc(d.name)}</h3><p class="muted small" style="margin:0">${esc(d.title)}</p></div></a>`).join("")}</div>
+  ${depts ? "" : `<h2>فريق الأطباء</h2>`}
+  <div class="grid">${depts ? "" : docs.map((d) => `<a class="card doc-card" href="${L(`doctors/${d.id}/`)}"><div class="avatar">${photo(d.photo, d.name, "person")}</div><div><h3>${esc(d.name)}</h3><p class="muted small" style="margin:0">${esc(d.title)}</p></div></a>`).join("")}</div>
+  ${depts ? `<h2>التخصصات</h2><div class="grid g2">${c.services.map((sv) => `<a class="card doc-card" href="${L(`services/${sv.slug}/`)}"><div class="ico" style="margin:0">${icon(sv.icon)}</div><div><h3 style="margin:0">${esc(sv.title)}</h3><p class="muted small" style="margin:0">${esc(sv.short)}</p></div></a>`).join("")}</div>` : ""}
   <h2 style="margin-top:24px">صور المركز</h2>
   <div class="photos">${c.branches.flatMap((b) => (b.photos?.length ? b.photos : [null, null, null]).map((src, i) => `<figure>${photo(src, ["الواجهة", "الاستقبال", "غرفة الكشف"][i] || "صورة المركز", "place")}</figure>`)).slice(0, 6).join("")}</div>
 </div>${bookAside()}</div></section>`,
     });
-    for (const d of docs) {
+    for (const d of depts ? [] : docs) {
       pages[`doctors/${d.id}/`] = page({ p: `doctors/${d.id}/`, title: `${d.name} – ${d.title} | ${c.brand.short}`, desc: d.bio.slice(0, 150), pageName: d.name, schema: [physicianLd(d), crumbSchema([["about/", "عن المركز"], [`doctors/${d.id}/`, d.name]])], body: doctorBody(d, d.name) });
     }
   } else {
@@ -530,7 +541,7 @@ ${allPhotos.length ? `
   <h2>مين محتاج يكشف؟</h2><ul>${s.who.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>
   <h2>رحلة العلاج خطوة بخطوة</h2><ol class="journey">${s.journey.map((j) => `<li>${esc(j)}</li>`).join("")}</ol>
   <h2>التحضير والتعافي</h2><p>${esc(s.recovery)}</p>
-  ${isClinic && docsFor.length ? `<h2>الأطباء</h2><div class="grid">${docsFor.map((d) => `<a class="card doc-card" href="${L(`doctors/${d.id}/`)}"><div class="avatar">${photo(d.photo, d.name, "person")}</div><div><b>${esc(d.name)}</b><br><span class="muted small">${esc(d.title)}</span></div></a>`).join("")}</div>` : ""}
+  ${isClinic && !depts && docsFor.length ? `<h2>الأطباء</h2><div class="grid">${docsFor.map((d) => `<a class="card doc-card" href="${L(`doctors/${d.id}/`)}"><div class="avatar">${photo(d.photo, d.name, "person")}</div><div><b>${esc(d.name)}</b><br><span class="muted small">${esc(d.title)}</span></div></a>`).join("")}</div>` : ""}
   <h2>أسئلة شائعة عن ${esc(s.title)}</h2>${faqHtml(s.faq)}
   ${rel.length ? `<h2>مقالات مرتبطة</h2><div class="grid g2">${rel.map(articleCard).join("")}</div>` : ""}
   ${disclaimer}${emergency}
@@ -558,7 +569,7 @@ ${allPhotos.length ? `
 <section class="sec"><div class="wrap">
   ${branchCard(b)}
   <div class="grid g3" style="margin-top:20px">
-    <div class="card"><div class="ico">${icon("wallet")}</div><h3>سعر الكشف</h3><p class="muted" style="margin:0">الكشف: ${esc(c.fees.consult)} جنيه<br>الاستشارة خلال ${esc(c.fees.followupDays)} يوم: ${esc(c.fees.followupLabel || "مجانًا")}</p></div>
+    <div class="card"><div class="ico">${icon("wallet")}</div><h3>سعر الكشف</h3><p class="muted" style="margin:0">${feeText("<br>")}</p></div>
     <div class="card"><div class="ico">${icon("car")}</div><h3>إرشادات الوصول</h3><ul class="muted small" style="margin:0;padding-inline-start:18px">${(b.access || []).map((a) => `<li>${esc(a)}</li>`).join("")}</ul></div>
     <div class="card"><div class="ico">${icon("shield")}</div><h3>التأمين</h3><p class="muted small" style="margin:0">${b.insurance?.length ? esc(b.insurance.join("، ")) : "اسأل الاستقبال عن شركات التأمين المتعاقد معاها."}</p></div>
   </div>
@@ -613,7 +624,7 @@ ${allPhotos.length ? `
         crumbSchema([["articles/", "المقالات"], [`articles/${a.slug}/`, a.title]]),
       ],
       body: `<section class="ph"><div class="wrap">${crumbs([["articles/", "المقالات"], ["", a.title]])}<h1>${esc(a.title)}</h1>
-<p class="muted small" style="margin:0">كتابة ومراجعة طبية: <a href="${L(isClinic ? `doctors/${author.id}/` : "about/")}">${esc(author.name)}</a> · آخر مراجعة: ${esc(c.lastReviewedAr || "أكتوبر 2026")} · ${a.minutes} دقايق قراءة</p></div></section>
+<p class="muted small" style="margin:0">كتابة ومراجعة طبية: <a href="${L(isClinic && !depts ? `doctors/${author.id}/` : "about/")}">${esc(author.name)}</a> · آخر مراجعة: ${esc(c.lastReviewedAr || "أكتوبر 2026")} · ${a.minutes} دقايق قراءة</p></div></section>
 <section class="sec"><div class="wrap layout"><article class="prose">
   <nav class="card" aria-label="فهرس المقال" style="margin-bottom:20px"><b>في المقال ده</b><ol style="margin:6px 0 0">${a.sections.map((s, i) => `<li><a href="#s${i}">${esc(s.h)}</a></li>`).join("")}</ol></nav>
   ${a.sections.map((s, i) => `<h2 id="s${i}">${esc(s.h)}</h2>${(s.p || []).map((p) => `<p>${esc(p)}</p>`).join("")}${s.list ? `<ul>${s.list.map((li) => `<li>${esc(li)}</li>`).join("")}</ul>` : ""}`).join("")}
