@@ -1,0 +1,11 @@
+// For Cloudflare "Create an app" (Workers + Git): build `node build.mjs`, deploy `npx wrangler deploy`.
+// Pages deploys (zip upload or `wrangler pages deploy dist`) don't use this file.
+{
+  "name": "dse-demos",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
